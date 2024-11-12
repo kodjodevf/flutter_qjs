@@ -180,7 +180,7 @@ class _RuntimeOpaque {
 
 final Map<Pointer<JSRuntime>, _RuntimeOpaque> runtimeOpaques = Map();
 
-Pointer<JSValue>? channelDispacher(
+Pointer<JSValue> channelDispacher(
   Pointer<JSContext> ctx,
   int type,
   Pointer<JSValue> argv,
@@ -188,7 +188,15 @@ Pointer<JSValue>? channelDispacher(
   final rt = type == JSChannelType.FREE_OBJECT
       ? ctx.cast<JSRuntime>()
       : jsGetRuntime(ctx);
-  return runtimeOpaques[rt]?._channel(ctx, type, argv);
+
+  final runtimeOpaque = runtimeOpaques[rt];
+
+  assert(
+    runtimeOpaque != null,
+    'The requested runtime opaque does not exist: $rt',
+  );
+
+  return runtimeOpaque!._channel(ctx, type, argv);
 }
 
 Pointer<JSRuntime> jsNewRuntime(

@@ -10,3 +10,5 @@ build/
 
 ios/cxx
 macos/cxx
+
+.vscode

@@ -1,3 +1,0 @@
-[submodule "cxx/quickjs"]
-  path = cxx/quickjs
-  url = https://github.com/ekibun/quickjs.git

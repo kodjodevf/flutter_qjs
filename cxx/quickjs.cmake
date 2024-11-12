@@ -1,5 +1,6 @@
-cmake_minimum_required(VERSION 3.7 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.10)
 set(CXX_LIB_DIR ${CMAKE_CURRENT_LIST_DIR})
+set(CMAKE_CXX_STANDARD 17)
 
 # quickjs
 set(QUICK_JS_LIB_DIR ${CXX_LIB_DIR}/quickjs)
@@ -9,6 +10,7 @@ add_library(quickjs STATIC
     ${QUICK_JS_LIB_DIR}/libregexp.c
     ${QUICK_JS_LIB_DIR}/libunicode.c
     ${QUICK_JS_LIB_DIR}/quickjs.c
+    ${QUICK_JS_LIB_DIR}/libbf.c
 )
 
 project(quickjs LANGUAGES C)
