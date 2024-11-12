@@ -97,6 +97,8 @@ extern "C"
 
   DLLEXPORT int32_t jsIsArray(JSContext *ctx, JSValueConst *val);
 
+  DLLEXPORT int32_t jsIsMap(JSContext *ctx, JSValueConst *val);
+
   DLLEXPORT int32_t jsIsError(JSContext *ctx, JSValueConst *val);
 
   DLLEXPORT JSValue *jsNewError(JSContext *ctx);

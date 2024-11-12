@@ -320,6 +320,11 @@ extern "C"
     return JS_IsArray(ctx, *val);
   }
 
+  DLLEXPORT int32_t jsIsMap(JSContext *ctx, JSValueConst *val)
+  {
+    return JS_IsMap(ctx, *val);
+  }
+
   DLLEXPORT int32_t jsIsError(JSContext *ctx, JSValueConst *val)
   {
     return JS_IsError(ctx, *val);
