@@ -1,6 +1,5 @@
 import 'package:flutter_qjs/javascript_runtime.dart';
 import './quickjs/quickjs_runtime2.dart';
-import './extensions/fetch.dart';
 import './extensions/handle_promises.dart';
 
 export './extensions/handle_promises.dart';
@@ -9,12 +8,10 @@ export 'javascript_runtime.dart';
 export 'js_eval_result.dart';
 
 JavascriptRuntime getJavascriptRuntime({
-  bool xhr = true,
   Map<String, dynamic>? extraArgs = const {},
 }) {
   JavascriptRuntime runtime;
   runtime = QuickJsRuntime2();
-  if (xhr) runtime.enableFetch();
   runtime.enableHandlePromises();
   return runtime;
 }

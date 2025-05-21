@@ -64,25 +64,25 @@ class QuickJsRuntime2 extends JavascriptRuntime {
         switch (type) {
           case JSChannelType.METHON:
             final pdata = ptr.cast<Pointer<JSValue>>();
-            final argc = pdata.elementAt(1).value.cast<Int32>().value;
+            final argc = (pdata + 1).value.cast<Int32>().value;
             final pargs = [];
             for (var i = 0; i < argc; ++i) {
               pargs.add(_jsToDart(
                 ctx,
                 Pointer.fromAddress(
-                  pdata.elementAt(2).value.address + sizeOfJSValue * i,
+                  (pdata + 2).value.address + sizeOfJSValue * i,
                 ),
               ));
             }
             final JSInvokable func = _jsToDart(
               ctx,
-              pdata.elementAt(3).value,
+              (pdata + 3).value,
             );
             return _dartToJs(
                 ctx,
                 func.invoke(
                   pargs,
-                  _jsToDart(ctx, pdata.elementAt(0).value),
+                  _jsToDart(ctx, (pdata + 0).value),
                 ));
           case JSChannelType.MODULE:
             if (moduleHandler == null) throw JSError('No ModuleHandler');

@@ -12,10 +12,10 @@ final class Utf8NullTerminated extends Struct {
     final bytes = Utf8Encoder().convert(s);
     final ptr = calloc<Utf8NullTerminated>(bytes.length + 1);
     for (var i = 0; i < bytes.length; i++) {
-      ptr.elementAt(i).ref.char = bytes[i];
+      (ptr + i).ref.char = bytes[i];
     }
     // Add the terminator '\0'
-    ptr.elementAt(bytes.length).ref.char = 0;
+    (ptr + bytes.length).ref.char = 0;
     return ptr;
   }
 
@@ -23,7 +23,7 @@ final class Utf8NullTerminated extends Struct {
     final List<int> bytes = [];
     var len = 0;
     while (true) {
-      final char = ptr.elementAt(len++).ref.char;
+      final char = (ptr + len++).ref.char;
       if (char == 0) break;
       bytes.add(char);
     }

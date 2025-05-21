@@ -191,6 +191,7 @@ class FormWidgetState extends State<FormWidget> {
                           ],
                         ),
                       ).then((_) {
+                        if (!mounted) return;
                         FocusScope.of(context).requestFocus(
                           _fieldsFocusNodes[field],
                         );
