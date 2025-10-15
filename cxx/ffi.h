@@ -136,4 +136,9 @@ extern "C"
   DLLEXPORT JSValue *jsNewPromiseCapability(JSContext *ctx, JSValue *resolving_funcs);
 
   DLLEXPORT void jsFree(JSContext *ctx, void *ptab);
+
+  DLLEXPORT uint8_t *CompileScript(JSContext *ctx, const char *script, const char *fileName, size_t *lengthPtr);
+
+  DLLEXPORT JSValue *EvaluateBytecode(JSContext *ctx, size_t length, uint8_t *buf);
+
 }

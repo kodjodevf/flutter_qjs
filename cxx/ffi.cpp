@@ -419,4 +419,28 @@ extern "C"
   {
     js_free(ctx, ptab);
   }
+
+  DLLEXPORT uint8_t *CompileScript(JSContext *ctx, const char *script, const char *fileName, size_t *lengthPtr) {
+    JSValue value = JS_Eval(ctx, script, strlen(script), fileName, JS_EVAL_FLAG_COMPILE_ONLY);
+
+    if (JS_IsException(value)) {
+      JS_FreeValue(ctx, value);
+      return NULL;
+    }
+
+    return JS_WriteObject(ctx, lengthPtr, value, JS_WRITE_OBJ_BYTECODE);
+  }
+
+  DLLEXPORT JSValue *EvaluateBytecode(JSContext *ctx, size_t length, uint8_t *buf) {
+    JSValue obj = JS_ReadObject(ctx, buf, length, JS_READ_OBJ_BYTECODE);
+
+    if (JS_IsException(obj)) {
+      return NULL;
+    }
+
+    JSValue value = JS_EvalFunction(ctx, obj);
+
+    return new JSValue(value);
+  }
+
 }

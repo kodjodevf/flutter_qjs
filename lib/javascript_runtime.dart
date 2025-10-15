@@ -86,6 +86,18 @@ abstract class JavascriptRuntime {
 
   JsEvalResult evaluate(String code, {String? sourceUrl});
 
+  Uint8List compile(String code, String fileName) {
+    throw UnimplementedError();
+  }
+
+  JsEvalResult evaluateBytecode(Uint8List bytecode) {
+    throw UnimplementedError();
+  }
+
+  Future<JsEvalResult> evaluateAsyncBytecode(Uint8List bytecode) {
+    throw UnimplementedError();
+  }
+
   Future<JsEvalResult> evaluateAsync(String code, {String? sourceUrl});
 
   JsEvalResult callFunction(Pointer fn, Pointer obj);

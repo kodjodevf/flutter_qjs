@@ -201,6 +201,49 @@ class QuickJsRuntime2 extends JavascriptRuntime {
     return JsEvalResult(result?.toString() ?? "null", result);
   }
 
+  JsEvalResult evaluateBytecode(Uint8List bytecode) {
+    _ensureEngine();
+    final ctx = _ctx!;
+    final Pointer<Uint8> pointer = calloc<Uint8>(bytecode.length);
+    pointer.asTypedList(bytecode.length).setAll(0, bytecode);
+
+    final value = evaluateBytecodeFn(ctx, bytecode.length, pointer);
+
+    calloc.free(pointer);
+
+    if (jsIsException(value) != 0) {
+      jsFreeValue(ctx, value);
+      JSError exception = _parseJSException(ctx);
+      return JsEvalResult(exception.toString(), exception, isError: true);
+    }
+
+    final result = _jsToDart(ctx, value);
+    jsFreeValue(ctx, value);
+    return JsEvalResult(result?.toString() ?? "null", result);
+  }
+
+  Uint8List compile(String script, String fileName) {
+    final ctx = _ctx!;
+    final scriptPtr = script.toNativeUtf8().cast<Char>();
+    final fileNamePtr = fileName.toNativeUtf8().cast<Char>();
+    final lengthPtr = calloc<IntPtr>();
+    final value = compileFn(ctx, scriptPtr, fileNamePtr, lengthPtr);
+    final length = lengthPtr.value;
+    final data = Uint8List.fromList(value.asTypedList(length));
+
+    calloc.free(scriptPtr);
+    calloc.free(fileNamePtr);
+    calloc.free(lengthPtr);
+    calloc.free(value);
+
+    return data;
+  }
+
+  @override
+  Future<JsEvalResult> evaluateAsyncBytecode(Uint8List bytecode) {
+    return Future.value(evaluateBytecode(bytecode));
+  }
+
   @override
   JsEvalResult callFunction(Pointer<NativeType> fn, Pointer<NativeType> obj) {
     throw UnimplementedError();

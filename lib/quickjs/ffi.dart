@@ -178,6 +178,21 @@ class _RuntimeOpaque {
   }
 }
 
+late final compileFn = _compile.asFunction<
+    Pointer<Uint8> Function(
+        Pointer<JSContext>, Pointer<Char>, Pointer<Char>, Pointer<IntPtr>)>();
+late final _compile = _qjsLib.lookup<
+    NativeFunction<
+        Pointer<Uint8> Function(Pointer<JSContext>, Pointer<Char>,
+            Pointer<Char>, Pointer<IntPtr>)>>('CompileScript');
+
+late final evaluateBytecodeFn = _evaluateBytecode.asFunction<
+    Pointer<JSValue> Function(Pointer<JSContext>, int, Pointer<Uint8>)>();
+late final _evaluateBytecode = _qjsLib.lookup<
+    NativeFunction<
+        Pointer<JSValue> Function(
+            Pointer<JSContext>, Size, Pointer<Uint8>)>>('EvaluateBytecode');
+
 final Map<Pointer<JSRuntime>, _RuntimeOpaque> runtimeOpaques = Map();
 
 Pointer<JSValue> channelDispacher(
