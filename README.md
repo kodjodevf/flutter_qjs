@@ -1,6 +1,6 @@
 # Flutter QJS plugin
 
-Flutter bindings with dart:ffi for QuickJS : A small Javascript engine supports **ES2020**.
+Flutter bindings with dart:ffi for [QuickJS](https://github.com/bellard/quickjs) : A small Javascript engine supports **ES2023**.
 
 
 ## Examples
