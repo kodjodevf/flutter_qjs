@@ -10,7 +10,7 @@ add_library(quickjs STATIC
     ${QUICK_JS_LIB_DIR}/libregexp.c
     ${QUICK_JS_LIB_DIR}/libunicode.c
     ${QUICK_JS_LIB_DIR}/quickjs.c
-    ${QUICK_JS_LIB_DIR}/libbf.c
+    ${QUICK_JS_LIB_DIR}/dtoa.c
 )
 
 project(quickjs LANGUAGES C)
