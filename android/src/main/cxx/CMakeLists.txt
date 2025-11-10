@@ -39,6 +39,13 @@ find_library( # Sets the name of the path variable.
 # can link multiple libraries, such as libraries you define in this
 # build script, prebuilt third-party libraries, or system libraries.
 
+# Android 16KB Page Size Compatibility
+# Sets max page size to 16KB (16384 bytes = 2^14) for all architectures
+target_link_options(${JNI_LIB_NAME} PRIVATE 
+    "-Wl,--hash-style=both"
+    "-Wl,-z,max-page-size=16384"
+)
+
 target_link_libraries( # Specifies the target library.
                        ${JNI_LIB_NAME}
                        quickjs
