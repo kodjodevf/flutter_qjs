@@ -20,4 +20,9 @@ target_compile_options(quickjs PRIVATE "-DDUMP_LEAKS")
 if(MSVC)
     # https://github.com/ekibun/flutter_qjs/issues/7
     target_compile_options(quickjs PRIVATE "/Oi-")
+    # Windows compatibility: sys/time.h doesn't exist on Windows
+    target_compile_definitions(quickjs PRIVATE "_CRT_SECURE_NO_WARNINGS")
+    target_compile_definitions(quickjs PRIVATE "_WINSOCK_DEPRECATED_NO_WARNINGS")
+    # Suppress signed/unsigned mismatch warnings in libunicode.c
+    target_compile_options(quickjs PRIVATE "/wd4018")
 endif()
