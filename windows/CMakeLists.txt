@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-include("${CMAKE_CURRENT_SOURCE_DIR}/../cxx/quickjs.cmake")
+include("${CMAKE_CURRENT_SOURCE_DIR}/../cxx-windows/quickjs.cmake")
 
 set(PROJECT_NAME "flutter_qjs")
 project(${PROJECT_NAME} LANGUAGES CXX)

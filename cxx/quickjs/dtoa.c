@@ -28,12 +28,7 @@
 #include <string.h>
 #include <assert.h>
 #include <ctype.h>
-/* sys/time.h is not used in this file, and doesn't exist on Windows */
-#if 0
-#ifndef _WIN32
 #include <sys/time.h>
-#endif
-#endif
 #include <math.h>
 #include <setjmp.h>
 

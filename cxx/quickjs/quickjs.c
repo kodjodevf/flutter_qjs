@@ -28,11 +28,7 @@
 #include <inttypes.h>
 #include <string.h>
 #include <assert.h>
-#ifdef _WIN32
-#include <sys/timeb.h>
-#else
 #include <sys/time.h>
-#endif
 #include <time.h>
 #include <fenv.h>
 #include <math.h>
@@ -50,23 +46,6 @@
 #include "libregexp.h"
 #include "libunicode.h"
 #include "dtoa.h"
-
-/* Windows compatibility for gettimeofday */
-#ifdef _WIN32
-struct timeval {
-    long tv_sec;
-    long tv_usec;
-};
-
-static int gettimeofday(struct timeval *tv, void *tz)
-{
-    struct __timeb64 tb;
-    _ftime64(&tb);
-    tv->tv_sec = (long)tb.time;
-    tv->tv_usec = tb.millitm * 1000;
-    return 0;
-}
-#endif
 
 #define OPTIMIZE         1
 #define SHORT_OPCODES    1
