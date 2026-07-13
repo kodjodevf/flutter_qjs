@@ -3,7 +3,7 @@ import UIKit
 
 public class SwiftFlutterQjsPlugin: NSObject, FlutterPlugin {
   public static func register(with registrar: FlutterPluginRegistrar) {
-    let channel = FlutterMethodChannel(name: "flutter_qjs", binaryMessenger: registrar.messenger())
+    let channel = FlutterMethodChannel(name: "flutter_qjs_es2023", binaryMessenger: registrar.messenger())
     let instance = SwiftFlutterQjsPlugin()
     registrar.addMethodCallDelegate(instance, channel: channel)
   }

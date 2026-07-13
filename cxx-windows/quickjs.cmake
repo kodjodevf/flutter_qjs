@@ -15,7 +15,8 @@ add_library(quickjs STATIC
 
 project(quickjs LANGUAGES C)
 target_compile_options(quickjs PRIVATE "-DCONFIG_VERSION=\"${QUICKJS_VERSION}\"")
-target_compile_options(quickjs PRIVATE "-DDUMP_LEAKS")
+# DUMP_LEAKS enables runtime leak detection asserts; only in Debug builds.
+target_compile_options(quickjs PRIVATE "$<$<CONFIG:Debug>:-DDUMP_LEAKS>")
 
 if(MSVC)
     # https://github.com/ekibun/flutter_qjs/issues/7

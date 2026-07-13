@@ -3,7 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
-  flutter_qjs
+  flutter_qjs_es2023
 )
 
 list(APPEND FLUTTER_FFI_PLUGIN_LIST

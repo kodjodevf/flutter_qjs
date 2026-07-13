@@ -1,5 +1,5 @@
-#ifndef FLUTTER_PLUGIN_flutter_qjs_plugin_H_
-#define FLUTTER_PLUGIN_flutter_qjs_plugin_H_
+#ifndef FLUTTER_PLUGIN_flutter_qjs_es2023_plugin_H_
+#define FLUTTER_PLUGIN_flutter_qjs_es2023_plugin_H_
 
 #include <flutter_linux/flutter_linux.h>
 
@@ -23,4 +23,4 @@ FLUTTER_PLUGIN_EXPORT void flutter_qjs_plugin_register_with_registrar(
 
 G_END_DECLS
 
-#endif  // FLUTTER_PLUGIN_flutter_qjs_plugin_H_
+#endif  // FLUTTER_PLUGIN_flutter_qjs_es2023_plugin_H_

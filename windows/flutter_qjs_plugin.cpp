@@ -5,7 +5,7 @@
  * @LastEditors: ekibun
  * @LastEditTime: 2020-09-20 16:00:15
  */
-#include "include/flutter_qjs/flutter_qjs_plugin.h"
+#include "include/flutter_qjs_es2023/flutter_qjs_plugin.h"
 
 // This must be included before many other Windows headers.
 #include <windows.h>

@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_qjs/flutter_qjs.dart';
+import 'package:flutter_qjs_es2023/flutter_qjs.dart';
 
 import 'ajv_result_screen.dart';
 import 'form.dart';
@@ -39,7 +39,7 @@ class _AjvExampleState extends State<AjvExample> {
           "0" : "1"; ajvIsLoaded;
         """).stringResult;
     if (kDebugMode) {
-      print("AJV is Loaded $ajvIsLoaded");
+      FlutterQjsLogger.debug('AJV is loaded $ajvIsLoaded');
     }
     if (ajvIsLoaded == "0") {
       try {
@@ -81,7 +81,7 @@ class _AjvExampleState extends State<AjvExample> {
       """);
       } on PlatformException catch (e) {
         if (kDebugMode) {
-          print('Failed to init js engine: ${e.details}');
+          FlutterQjsLogger.error('Failed to init js engine', e.details);
         }
       }
     }

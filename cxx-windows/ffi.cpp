@@ -8,6 +8,7 @@
 #include "ffi.h"
 #include <functional>
 #include <future>
+#include <stdlib.h>
 #include <string.h>
 
 extern "C"
@@ -234,6 +235,24 @@ extern "C"
     return new JSValue(JS_NewArrayBufferCopy(ctx, buf, len));
   }
 
+  DLLEXPORT uint8_t *jsAllocBuffer(size_t len)
+  {
+    return (uint8_t *)malloc(len == 0 ? 1 : len);
+  }
+
+  static void js_free_owned_buffer(JSRuntime *rt, void *opaque, void *ptr)
+  {
+    free(ptr);
+  }
+
+  DLLEXPORT JSValue *jsNewArrayBufferOwned(JSContext *ctx, uint8_t *buf, size_t len)
+  {
+    JSValue ret = JS_NewArrayBuffer(ctx, buf, len, js_free_owned_buffer, NULL, 0);
+    if (JS_IsException(ret))
+      free(buf);
+    return new JSValue(ret);
+  }
+
   DLLEXPORT JSValue *jsNewArray(JSContext *ctx)
   {
     return new JSValue(JS_NewArray(ctx));
@@ -305,6 +324,73 @@ extern "C"
     return JS_GetArrayBuffer(ctx, psize, *obj);
   }
 
+  // Create a JS TypedArray of `type` (JSTypedArrayEnum) from a raw byte buffer.
+  DLLEXPORT JSValue *jsNewTypedArray(JSContext *ctx, const uint8_t *buf, size_t len, int32_t type)
+  {
+    JSValue arrayBuffer = JS_NewArrayBufferCopy(ctx, buf, len);
+    if (JS_IsException(arrayBuffer))
+      return new JSValue(arrayBuffer);
+    // The typed array constructor reads argv[0]=buffer, argv[1]=offset,
+    // argv[2]=length; pass undefined offset/length to view the whole buffer.
+    JSValueConst argv[3] = {arrayBuffer, JS_UNDEFINED, JS_UNDEFINED};
+    JSValue ta = JS_NewTypedArray(ctx, 3, argv, (JSTypedArrayEnum)type);
+    JS_FreeValue(ctx, arrayBuffer);
+    return new JSValue(ta);
+  }
+
+  DLLEXPORT JSValue *jsNewTypedArrayOwned(JSContext *ctx, uint8_t *buf, size_t len, int32_t type)
+  {
+    JSValue arrayBuffer = JS_NewArrayBuffer(ctx, buf, len, js_free_owned_buffer, NULL, 0);
+    if (JS_IsException(arrayBuffer))
+    {
+      free(buf);
+      return new JSValue(arrayBuffer);
+    }
+    JSValueConst argv[3] = {arrayBuffer, JS_UNDEFINED, JS_UNDEFINED};
+    JSValue ta = JS_NewTypedArray(ctx, 3, argv, (JSTypedArrayEnum)type);
+    JS_FreeValue(ctx, arrayBuffer);
+    return new JSValue(ta);
+  }
+
+  // Map object class_id -> JSTypedArrayEnum (0..11). Returns -1 if not a TA.
+  // Class IDs match quickjs internal order: JS_CLASS_UINT8C_ARRAY .. FLOAT64.
+  static int32_t js_typed_array_type(JSValueConst val)
+  {
+    JSClassID class_id = JS_GetClassID(val);
+    // JS_CLASS_UINT8C_ARRAY == 21 .. JS_CLASS_FLOAT64_ARRAY == 32 in this tree.
+    if (class_id < 21 || class_id > 32)
+      return -1;
+    return (int32_t)(class_id - 21);
+  }
+
+  // If `val` is a typed array, return a pointer to its element data, set
+  // `*plength` to the byte length and `*ptype` to the JSTypedArrayEnum.
+  // Returns NULL when `val` is not a (supported) typed array.
+  DLLEXPORT uint8_t *jsGetTypedArrayData(JSContext *ctx, JSValueConst *val,
+                                         size_t *plength, int32_t *ptype)
+  {
+    int32_t type = js_typed_array_type(*val);
+    if (type < 0)
+      return NULL;
+    size_t byte_offset = 0, byte_length = 0, bytes_per_element = 0;
+    JSValue buffer = JS_GetTypedArrayBuffer(ctx, *val, &byte_offset, &byte_length, &bytes_per_element);
+    if (JS_IsException(buffer))
+    {
+      JS_FreeValue(ctx, buffer);
+      return NULL;
+    }
+    size_t buf_size = 0;
+    uint8_t *ptr = JS_GetArrayBuffer(ctx, &buf_size, buffer);
+    // The typed array still holds a reference to the same underlying buffer,
+    // so `ptr` stays valid after freeing this duplicated handle.
+    JS_FreeValue(ctx, buffer);
+    if (ptr == nullptr)
+      return NULL;
+    *plength = byte_length;
+    *ptype = type;
+    return ptr + byte_offset;
+  }
+
   DLLEXPORT int32_t jsIsFunction(JSContext *ctx, JSValueConst *val)
   {
     return JS_IsFunction(ctx, *val);
@@ -345,6 +431,18 @@ extern "C"
                                           JSAtom prop, JSValue *val, int32_t flags)
   {
     return JS_DefinePropertyValue(ctx, *this_obj, prop, *val, flags);
+  }
+
+  DLLEXPORT JSValue *jsGetPropertyUint32(JSContext *ctx, JSValueConst *this_obj,
+                                         uint32_t idx)
+  {
+    return new JSValue(JS_GetPropertyUint32(ctx, *this_obj, idx));
+  }
+
+  DLLEXPORT int32_t jsDefinePropertyValueUint32(JSContext *ctx, JSValueConst *this_obj,
+                                                uint32_t idx, JSValue *val, int32_t flags)
+  {
+    return JS_DefinePropertyValueUint32(ctx, *this_obj, idx, *val, flags);
   }
 
   DLLEXPORT void jsFreeAtom(JSContext *ctx, JSAtom v)
@@ -428,7 +526,9 @@ extern "C"
       return NULL;
     }
 
-    return JS_WriteObject(ctx, lengthPtr, value, JS_WRITE_OBJ_BYTECODE);
+    uint8_t *out = JS_WriteObject(ctx, lengthPtr, value, JS_WRITE_OBJ_BYTECODE);
+    JS_FreeValue(ctx, value);
+    return out;
   }
 
   DLLEXPORT JSValue *EvaluateBytecode(JSContext *ctx, size_t length, uint8_t *buf) {

@@ -1,6 +1,8 @@
-# Flutter QJS plugin
+# flutter_qjs_es2023
 
-Flutter bindings with dart:ffi for [QuickJS](https://github.com/bellard/quickjs) : A small Javascript engine supports **ES2023**.
+Flutter bindings with `dart:ffi` for [QuickJS](https://github.com/bellard/quickjs), a small JavaScript engine with **ES2023** support.
+
+Supported platforms: Android, iOS, macOS, Linux, and Windows. Web is not supported because this package relies on native FFI.
 
 
 ## Examples
@@ -14,7 +16,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 
 import 'package:flutter/services.dart';
-import 'package:flutter_qjs/flutter_qjs.dart';
+import 'package:flutter_qjs_es2023/flutter_qjs.dart';
 
 void main() => runApp(MyApp());
 

@@ -53,8 +53,95 @@ Pointer<JSValue> _jsGetPropertyValue(
   return jsProp;
 }
 
-Pointer<JSValue> _dartToJs(Pointer<JSContext> ctx, dynamic val,
-    {Map<dynamic, Pointer<JSValue>>? cache}) {
+/// Fast path: copy a Dart [TypedData] view directly into a JS TypedArray via a
+/// single memcpy, bypassing per-element marshaling. Returns null for typed data
+/// kinds without a matching JS TypedArray (falls back to the generic path).
+Pointer<JSValue>? _typedDataToJs(Pointer<JSContext> ctx, TypedData val) {
+  final int type;
+  if (val is Int8List)
+    type = JSTypedArrayType.INT8;
+  else if (val is Uint8ClampedList)
+    type = JSTypedArrayType.UINT8C;
+  else if (val is Uint8List)
+    type = JSTypedArrayType.UINT8;
+  else if (val is Int16List)
+    type = JSTypedArrayType.INT16;
+  else if (val is Uint16List)
+    type = JSTypedArrayType.UINT16;
+  else if (val is Int32List)
+    type = JSTypedArrayType.INT32;
+  else if (val is Uint32List)
+    type = JSTypedArrayType.UINT32;
+  else if (val is Int64List)
+    type = JSTypedArrayType.BIG_INT64;
+  else if (val is Uint64List)
+    type = JSTypedArrayType.BIG_UINT64;
+  else if (val is Float32List)
+    type = JSTypedArrayType.FLOAT32;
+  else if (val is Float64List)
+    type = JSTypedArrayType.FLOAT64;
+  else
+    return null;
+  final byteLength = val.lengthInBytes;
+  final ptr = jsAllocBuffer(byteLength);
+  if (ptr.address == 0) throw JSError('Out of memory');
+  final bytes = val.buffer.asUint8List(val.offsetInBytes, byteLength);
+  ptr.asTypedList(byteLength).setAll(0, bytes);
+  return jsNewTypedArrayOwned(ctx, ptr, byteLength, type);
+}
+
+/// Fast path: convert a JS TypedArray to the matching Dart typed list via a
+/// single memcpy. Returns null when [val] is not a typed array.
+TypedData? _jsTypedArrayToDart(Pointer<JSContext> ctx, Pointer<JSValue> val) {
+  final plength = malloc<IntPtr>();
+  final ptype = malloc<Int32>();
+  final data = jsGetTypedArrayData(ctx, val, plength, ptype);
+  if (data.address == 0) {
+    malloc.free(plength);
+    malloc.free(ptype);
+    return null;
+  }
+  final byteLength = plength.value;
+  final type = ptype.value;
+  malloc.free(plength);
+  malloc.free(ptype);
+  final bytes = data.asTypedList(byteLength);
+  // Copy into a Dart-owned buffer (data is owned by the JS engine).
+  final copy = Uint8List.fromList(bytes);
+  final bd = copy.buffer;
+  switch (type) {
+    case JSTypedArrayType.INT8:
+      return bd.asInt8List();
+    case JSTypedArrayType.UINT8:
+      return copy;
+    case JSTypedArrayType.UINT8C:
+      return Uint8ClampedList.fromList(copy);
+    case JSTypedArrayType.INT16:
+      return bd.asInt16List();
+    case JSTypedArrayType.UINT16:
+      return bd.asUint16List();
+    case JSTypedArrayType.INT32:
+      return bd.asInt32List();
+    case JSTypedArrayType.UINT32:
+      return bd.asUint32List();
+    case JSTypedArrayType.BIG_INT64:
+      return bd.asInt64List();
+    case JSTypedArrayType.BIG_UINT64:
+      return bd.asUint64List();
+    case JSTypedArrayType.FLOAT32:
+      return bd.asFloat32List();
+    case JSTypedArrayType.FLOAT64:
+      return bd.asFloat64List();
+    default:
+      return copy;
+  }
+}
+
+Pointer<JSValue> _dartToJs(
+  Pointer<JSContext> ctx,
+  dynamic val, {
+  Map<dynamic, Pointer<JSValue>>? cache,
+}) {
   if (val == null) return jsUNDEFINED();
   if (val is Error) return _dartToJs(ctx, JSError(val, val.stackTrace));
   if (val is Exception) return _dartToJs(ctx, JSError(val));
@@ -68,8 +155,9 @@ Pointer<JSValue> _dartToJs(Pointer<JSContext> ctx, dynamic val,
   if (val is _JSObject) return jsDupValue(ctx, val._val!);
   if (val is Future) {
     final resolvingFunc = malloc<Uint8>(sizeOfJSValue * 2).cast<JSValue>();
-    final resolvingFunc2 =
-        Pointer<JSValue>.fromAddress(resolvingFunc.address + sizeOfJSValue);
+    final resolvingFunc2 = Pointer<JSValue>.fromAddress(
+      resolvingFunc.address + sizeOfJSValue,
+    );
     final ret = jsNewPromiseCapability(ctx, resolvingFunc);
     final _JSFunction res = _jsToDart(ctx, resolvingFunc);
     final _JSFunction rej = _jsToDart(ctx, resolvingFunc2);
@@ -80,14 +168,19 @@ Pointer<JSValue> _dartToJs(Pointer<JSContext> ctx, dynamic val,
     final refRej = _DartObject(ctx, rej);
     res.free();
     rej.free();
-    val.then((value) {
-      res.invoke([value]);
-    }, onError: (e) {
-      rej.invoke([e]);
-    }).whenComplete(() {
-      refRes.free();
-      refRej.free();
-    });
+    val
+        .then(
+          (value) {
+            res.invoke([value]);
+          },
+          onError: (e) {
+            rej.invoke([e]);
+          },
+        )
+        .whenComplete(() {
+          refRes.free();
+          refRej.free();
+        });
     return ret;
   }
   if (cache == null) cache = Map();
@@ -95,13 +188,17 @@ Pointer<JSValue> _dartToJs(Pointer<JSContext> ctx, dynamic val,
   if (val is int) return jsNewInt64(ctx, val);
   if (val is double) return jsNewFloat64(ctx, val);
   if (val is String) return jsNewString(ctx, val);
-  if (val is Uint8List) {
-    final ptr = malloc<Uint8>(val.length);
-    final byteList = ptr.asTypedList(val.length);
-    byteList.setAll(0, val);
-    final ret = jsNewArrayBufferCopy(ctx, ptr, val.length);
-    malloc.free(ptr);
-    return ret;
+  if (val is TypedData) {
+    final ta = _typedDataToJs(ctx, val);
+    if (ta != null) return ta;
+  }
+  // ByteBuffer without a TypedArray view → ArrayBuffer.
+  if (val is ByteBuffer) {
+    final bytes = val.asUint8List();
+    final ptr = jsAllocBuffer(bytes.length);
+    if (ptr.address == 0) throw JSError('Out of memory');
+    ptr.asTypedList(bytes.length).setAll(0, bytes);
+    return jsNewArrayBufferOwned(ctx, ptr, bytes.length);
   }
   if (cache.containsKey(val)) {
     return jsDupValue(ctx, cache[val]!);
@@ -110,7 +207,8 @@ Pointer<JSValue> _dartToJs(Pointer<JSContext> ctx, dynamic val,
     final ret = jsNewArray(ctx);
     cache[val] = ret;
     for (int i = 0; i < val.length; ++i) {
-      _definePropertyValue(ctx, ret, i, val[i], cache: cache);
+      final jsItem = _dartToJs(ctx, val[i], cache: cache);
+      jsDefinePropertyValueUint32(ctx, ret, i, jsItem, JSProp.C_W_E);
     }
     return ret;
   }
@@ -140,8 +238,11 @@ Pointer<JSValue> _dartToJs(Pointer<JSContext> ctx, dynamic val,
   return dartObject;
 }
 
-dynamic _jsToDart(Pointer<JSContext> ctx, Pointer<JSValue> val,
-    {Map<int, dynamic>? cache}) {
+dynamic _jsToDart(
+  Pointer<JSContext> ctx,
+  Pointer<JSValue> val, {
+  Map<int, dynamic>? cache,
+}) {
   if (cache == null) cache = Map();
   final tag = jsValueGetTag(val);
   if (jsTagIsFloat64(tag) != 0) {
@@ -159,7 +260,9 @@ dynamic _jsToDart(Pointer<JSContext> ctx, Pointer<JSValue> val,
       final dartObjectClassId = runtimeOpaques[rt]?.dartObjectClassId;
       if (dartObjectClassId != null) {
         final dartObject = _DartObject.fromAddress(
-            rt, jsGetObjectOpaque(val, dartObjectClassId));
+          rt,
+          jsGetObjectOpaque(val, dartObjectClassId),
+        );
         if (dartObject != null) return dartObject._obj;
       }
       final psize = malloc<IntPtr>();
@@ -169,6 +272,8 @@ dynamic _jsToDart(Pointer<JSContext> ctx, Pointer<JSValue> val,
       if (buf.address != 0) {
         return Uint8List.fromList(buf.asTypedList(size));
       }
+      final typedArray = _jsTypedArrayToDart(ctx, val);
+      if (typedArray != null) return typedArray;
       final valptr = jsValueGetPtr(val);
       if (cache.containsKey(valptr)) {
         return cache[valptr];
@@ -178,14 +283,18 @@ dynamic _jsToDart(Pointer<JSContext> ctx, Pointer<JSValue> val,
       } else if (jsIsError(ctx, val) != 0) {
         final err = jsToCString(ctx, val);
         final pstack = _jsGetPropertyValue(ctx, val, 'stack');
-        final stack =
-            jsToBool(ctx, pstack) != 0 ? jsToCString(ctx, pstack) : null;
+        final stack = jsToBool(ctx, pstack) != 0
+            ? jsToCString(ctx, pstack)
+            : null;
         jsFreeValue(ctx, pstack);
         return JSError(err, stack);
       } else if (jsIsPromise(ctx, val) != 0) {
         final jsPromiseThen = _jsGetPropertyValue(ctx, val, 'then');
-        final _JSFunction promiseThen =
-            _jsToDart(ctx, jsPromiseThen, cache: cache);
+        final _JSFunction promiseThen = _jsToDart(
+          ctx,
+          jsPromiseThen,
+          cache: cache,
+        );
         jsFreeValue(ctx, jsPromiseThen);
         final completer = Completer();
         completer.future.catchError((e) {});
@@ -209,10 +318,11 @@ dynamic _jsToDart(Pointer<JSContext> ctx, Pointer<JSValue> val,
       } else if (jsIsArray(ctx, val) != 0) {
         final jslength = _jsGetPropertyValue(ctx, val, 'length');
         final length = jsToInt64(ctx, jslength);
+        jsFreeValue(ctx, jslength);
         final ret = [];
         cache[valptr] = ret;
         for (var i = 0; i < length; ++i) {
-          final jsProp = _jsGetPropertyValue(ctx, val, i);
+          final jsProp = jsGetPropertyUint32(ctx, val, i);
           ret.add(_jsToDart(ctx, jsProp, cache: cache));
           jsFreeValue(ctx, jsProp);
         }
@@ -233,8 +343,11 @@ dynamic _jsToDart(Pointer<JSContext> ctx, Pointer<JSValue> val,
           final jsAtom = jsPropertyEnumGetAtom(ptab.value, i);
           final jsAtomValue = jsAtomToValue(ctx, jsAtom);
           final jsProp = jsGetProperty(ctx, val, jsAtom);
-          ret[_jsToDart(ctx, jsAtomValue, cache: cache)] =
-              _jsToDart(ctx, jsProp, cache: cache);
+          ret[_jsToDart(ctx, jsAtomValue, cache: cache)] = _jsToDart(
+            ctx,
+            jsProp,
+            cache: cache,
+          );
           jsFreeValue(ctx, jsAtomValue);
           jsFreeValue(ctx, jsProp);
           jsFreeAtom(ctx, jsAtom);

@@ -7,8 +7,9 @@ import 'dart:isolate';
 import 'dart:typed_data';
 
 import 'package:ffi/ffi.dart';
-import 'package:flutter_qjs/javascript_runtime.dart';
-import 'package:flutter_qjs/js_eval_result.dart';
+import 'package:flutter_qjs_es2023/flutter_qjs_logger.dart';
+import 'package:flutter_qjs_es2023/javascript_runtime.dart';
+import 'package:flutter_qjs_es2023/js_eval_result.dart';
 
 import 'ffi.dart';
 
@@ -28,6 +29,7 @@ typedef _JsHostPromiseRejectionHandler = void Function(dynamic reason);
 class QuickJsRuntime2 extends JavascriptRuntime {
   Pointer<JSRuntime>? _rt;
   Pointer<JSContext>? _ctx;
+  Pointer<JSValue>? _jsonStringifyFn;
 
   /// Max stack size for quickjs.
   int stackSize;
@@ -59,73 +61,70 @@ class QuickJsRuntime2 extends JavascriptRuntime {
 
   _ensureEngine() {
     if (_rt != null) return;
-    final rt = jsNewRuntime((ctx, type, ptr) {
-      try {
-        switch (type) {
-          case JSChannelType.METHON:
-            final pdata = ptr.cast<Pointer<JSValue>>();
-            final argc = (pdata + 1).value.cast<Int32>().value;
-            final pargs = [];
-            for (var i = 0; i < argc; ++i) {
-              pargs.add(_jsToDart(
+    final rt = jsNewRuntime(
+      (ctx, type, ptr) {
+        try {
+          switch (type) {
+            case JSChannelType.METHON:
+              final pdata = ptr.cast<Pointer<JSValue>>();
+              final argc = (pdata + 1).value.cast<Int32>().value;
+              final pargs = [];
+              for (var i = 0; i < argc; ++i) {
+                pargs.add(
+                  _jsToDart(
+                    ctx,
+                    Pointer.fromAddress(
+                      (pdata + 2).value.address + sizeOfJSValue * i,
+                    ),
+                  ),
+                );
+              }
+              final JSInvokable func = _jsToDart(ctx, (pdata + 3).value);
+              return _dartToJs(
                 ctx,
-                Pointer.fromAddress(
-                  (pdata + 2).value.address + sizeOfJSValue * i,
-                ),
-              ));
-            }
-            final JSInvokable func = _jsToDart(
-              ctx,
-              (pdata + 3).value,
-            );
-            return _dartToJs(
-                ctx,
-                func.invoke(
-                  pargs,
-                  _jsToDart(ctx, (pdata + 0).value),
-                ));
-          case JSChannelType.MODULE:
-            if (moduleHandler == null) throw JSError('No ModuleHandler');
-            final ret = moduleHandler!(
-              ptr.cast<Utf8>().toDartString(),
-            ).toNativeUtf8();
-            Future.microtask(() {
-              malloc.free(ret);
-            });
-            return ret.cast();
-          case JSChannelType.PROMISE_TRACK:
-            final err = _parseJSException(ctx, ptr);
-            if (hostPromiseRejectionHandler != null) {
-              hostPromiseRejectionHandler!(err);
-            } else {
-              print('unhandled promise rejection: $err');
-            }
+                func.invoke(pargs, _jsToDart(ctx, (pdata + 0).value)),
+              );
+            case JSChannelType.MODULE:
+              if (moduleHandler == null) throw JSError('No ModuleHandler');
+              final ret = moduleHandler!(
+                ptr.cast<Utf8>().toDartString(),
+              ).toNativeUtf8();
+              Future.microtask(() {
+                malloc.free(ret);
+              });
+              return ret.cast();
+            case JSChannelType.PROMISE_TRACK:
+              final err = _parseJSException(ctx, ptr);
+              if (hostPromiseRejectionHandler != null) {
+                hostPromiseRejectionHandler!(err);
+              } else {
+                FlutterQjsLogger.warning('Unhandled promise rejection', err);
+              }
+              return nullptr;
+            case JSChannelType.FREE_OBJECT:
+              final rt = ctx.cast<JSRuntime>();
+              _DartObject.fromAddress(rt, ptr.address)?.free();
+              return nullptr;
+          }
+          throw JSError('call channel with wrong type');
+        } catch (e) {
+          if (type == JSChannelType.FREE_OBJECT) {
+            FlutterQjsLogger.error('DartObject release error', e);
             return nullptr;
-          case JSChannelType.FREE_OBJECT:
-            final rt = ctx.cast<JSRuntime>();
-            _DartObject.fromAddress(rt, ptr.address)?.free();
+          }
+          if (type == JSChannelType.MODULE) {
+            FlutterQjsLogger.error('Module handler error', e);
             return nullptr;
+          }
+          final throwObj = _dartToJs(ctx, e);
+          final err = jsThrow(ctx, throwObj);
+          jsFreeValue(ctx, throwObj);
+          return err;
         }
-        throw JSError('call channel with wrong type');
-      } catch (e) {
-        if (type == JSChannelType.FREE_OBJECT) {
-          print('DartObject release error: $e');
-          return nullptr;
-        }
-        if (type == JSChannelType.MODULE) {
-          print('host Promise Rejection Handler error: $e');
-          return nullptr;
-        }
-        final throwObj = _dartToJs(ctx, e);
-        final err = jsThrow(ctx, throwObj);
-        jsFreeValue(ctx, throwObj);
-        if (type == JSChannelType.MODULE) {
-          jsFreeValue(ctx, err);
-          return nullptr;
-        }
-        return err;
-      }
-    }, timeout ?? 0, port);
+      },
+      timeout ?? 0,
+      port,
+    );
     final stackSize = this.stackSize;
     if (stackSize > 0) jsSetMaxStackSize(rt, stackSize);
     final memoryLimit = this.memoryLimit ?? 0;
@@ -138,11 +137,16 @@ class QuickJsRuntime2 extends JavascriptRuntime {
   close() {
     final rt = _rt;
     final ctx = _ctx;
-    _rt = null;
-    _ctx = null;
-    if (ctx != null) jsFreeContext(ctx);
     if (rt == null) return;
     _executePendingJob();
+    if (ctx != null) {
+      final jsonStringifyFn = _jsonStringifyFn;
+      _jsonStringifyFn = null;
+      if (jsonStringifyFn != null) jsFreeValue(ctx, jsonStringifyFn);
+      jsFreeContext(ctx);
+    }
+    _rt = null;
+    _ctx = null;
     try {
       jsFreeRuntime(rt);
     } on String catch (e) {
@@ -157,7 +161,12 @@ class QuickJsRuntime2 extends JavascriptRuntime {
     while (true) {
       int err = jsExecutePendingJob(rt);
       if (err <= 0) {
-        if (err < 0) print(_parseJSException(ctx));
+        if (err < 0) {
+          FlutterQjsLogger.error(
+            'Pending JavaScript job failed',
+            _parseJSException(ctx),
+          );
+        }
         break;
       }
     }
@@ -165,9 +174,9 @@ class QuickJsRuntime2 extends JavascriptRuntime {
 
   /// Dispatch JavaScript Event loop.
   Future<void> dispatch() async {
-    //await for (final _ in port) {
-    _executePendingJob();
-    //}
+    await for (final _ in port) {
+      _executePendingJob();
+    }
   }
 
   @override
@@ -187,7 +196,7 @@ class QuickJsRuntime2 extends JavascriptRuntime {
     final jsval = jsEval(
       ctx,
       command,
-      name ?? '<eval>',
+      name ?? sourceUrl ?? '<eval>',
       evalFlags ?? JSEvalFlag.GLOBAL,
     );
 
@@ -197,8 +206,57 @@ class QuickJsRuntime2 extends JavascriptRuntime {
       return JsEvalResult(exception.toString(), exception, isError: true);
     }
     final result = _jsToDart(ctx, jsval);
+    final isPromise = result is Future;
     jsFreeValue(ctx, jsval);
-    return JsEvalResult(result?.toString() ?? "null", result);
+    return JsEvalResult(
+      result?.toString() ?? "null",
+      result,
+      isPromise: isPromise,
+      isError: result is JSError,
+    );
+  }
+
+  /// Evaluate js script and decode the result via a single `JSON.stringify`
+  /// round-trip instead of recursive per-element FFI marshaling.
+  ///
+  /// This is dramatically faster for large arrays/objects, but the result must
+  /// be JSON-serializable: functions, Promises and cyclic references are not
+  /// supported (they decode to `null` / are dropped, as with `JSON.stringify`).
+  @override
+  dynamic evaluateJson(String command, {String? sourceUrl}) {
+    _ensureEngine();
+    final ctx = _ctx!;
+    final jsval = jsEval(
+      ctx,
+      command,
+      sourceUrl ?? '<eval>',
+      JSEvalFlag.GLOBAL,
+    );
+    if (jsIsException(jsval) != 0) {
+      jsFreeValue(ctx, jsval);
+      throw _parseJSException(ctx);
+    }
+    final fnStringify = _jsonStringifyFn ??= jsEval(
+      ctx,
+      'JSON.stringify',
+      '<json>',
+      JSEvalFlag.GLOBAL,
+    );
+    final thisObj = jsUNDEFINED();
+    final jsonVal = jsCall(ctx, fnStringify, thisObj, [jsval]);
+    jsFreeValue(ctx, thisObj);
+    jsFreeValue(ctx, jsval);
+    if (jsIsException(jsonVal) != 0) {
+      jsFreeValue(ctx, jsonVal);
+      throw _parseJSException(ctx);
+    }
+    if (jsValueGetTag(jsonVal) != JSTag.STRING) {
+      jsFreeValue(ctx, jsonVal);
+      return null;
+    }
+    final jsonStr = jsToCString(ctx, jsonVal);
+    jsFreeValue(ctx, jsonVal);
+    return jsonDecode(jsonStr);
   }
 
   JsEvalResult evaluateBytecode(Uint8List bytecode) {
@@ -211,32 +269,44 @@ class QuickJsRuntime2 extends JavascriptRuntime {
 
     calloc.free(pointer);
 
-    if (jsIsException(value) != 0) {
-      jsFreeValue(ctx, value);
+    if (value.address == 0 || jsIsException(value) != 0) {
+      if (value.address != 0) jsFreeValue(ctx, value);
       JSError exception = _parseJSException(ctx);
       return JsEvalResult(exception.toString(), exception, isError: true);
     }
 
     final result = _jsToDart(ctx, value);
     jsFreeValue(ctx, value);
-    return JsEvalResult(result?.toString() ?? "null", result);
+    return JsEvalResult(
+      result?.toString() ?? "null",
+      result,
+      isPromise: result is Future,
+      isError: result is JSError,
+    );
   }
 
+  @override
   Uint8List compile(String script, String fileName) {
+    _ensureEngine();
     final ctx = _ctx!;
     final scriptPtr = script.toNativeUtf8().cast<Char>();
     final fileNamePtr = fileName.toNativeUtf8().cast<Char>();
     final lengthPtr = calloc<IntPtr>();
     final value = compileFn(ctx, scriptPtr, fileNamePtr, lengthPtr);
-    final length = lengthPtr.value;
-    final data = Uint8List.fromList(value.asTypedList(length));
-
-    calloc.free(scriptPtr);
-    calloc.free(fileNamePtr);
-    calloc.free(lengthPtr);
-    calloc.free(value);
-
-    return data;
+    try {
+      if (value.address == 0) {
+        throw _parseJSException(ctx);
+      }
+      final length = lengthPtr.value;
+      return Uint8List.fromList(value.asTypedList(length));
+    } finally {
+      if (value.address != 0) {
+        calloc.free(value);
+      }
+      calloc.free(scriptPtr);
+      calloc.free(fileNamePtr);
+      calloc.free(lengthPtr);
+    }
   }
 
   @override
@@ -246,21 +316,41 @@ class QuickJsRuntime2 extends JavascriptRuntime {
 
   @override
   JsEvalResult callFunction(Pointer<NativeType> fn, Pointer<NativeType> obj) {
-    throw UnimplementedError();
+    _ensureEngine();
+    final ctx = _ctx!;
+    final func = fn.cast<JSValue>();
+    final thisObj = obj.cast<JSValue>();
+    final jsRet = jsCall(ctx, func, thisObj, const []);
+    if (jsIsException(jsRet) != 0) {
+      jsFreeValue(ctx, jsRet);
+      final exception = _parseJSException(ctx);
+      return JsEvalResult(exception.toString(), exception, isError: true);
+    }
+    final result = _jsToDart(ctx, jsRet);
+    jsFreeValue(ctx, jsRet);
+    return JsEvalResult(
+      result?.toString() ?? 'null',
+      result,
+      isPromise: result is Future,
+      isError: result is JSError,
+    );
   }
 
   @override
   T? convertValue<T>(JsEvalResult jsValue) {
-    return true as T;
+    final raw = jsValue.rawResult;
+    if (raw is T) return raw;
+    return null;
   }
 
   @override
   void dispose() {
     try {
+      disposeChannelFunctions();
       port.close(); // stop dispatch loop
       close(); // close engine
     } on JSError catch (e) {
-      print(e); // catch reference leak exception
+      FlutterQjsLogger.error('QuickJS dispose failed', e);
     }
   }
 
@@ -271,41 +361,58 @@ class QuickJsRuntime2 extends JavascriptRuntime {
 
   @override
   int executePendingJob() {
-    this.dispatch();
-    return 0;
+    final rt = _rt;
+    if (rt == null) return 0;
+    final err = jsExecutePendingJob(rt);
+    if (err < 0 && _ctx != null) {
+      FlutterQjsLogger.error(
+        'Pending JavaScript job failed',
+        _parseJSException(_ctx!),
+      );
+    }
+    return err;
   }
 
   @override
   String getEngineInstanceId() {
-    return this.hashCode.toString();
+    return identityHashCode(this).toString();
   }
 
   @override
   void initChannelFunctions() {
     JavascriptRuntime.channelFunctionsRegistered[getEngineInstanceId()] = {};
-    final setToGlobalObject =
-        evaluate("(key, val) => { this[key] = val; }").rawResult;
+    final setToGlobalObject = evaluate(
+      "(key, val) => { this[key] = val; }",
+    ).rawResult;
     (setToGlobalObject as JSInvokable).invoke([
       'sendMessage',
-      (String channelName, String message) {
+      (String channelName, dynamic message) {
         final channelFunctions = JavascriptRuntime
-            .channelFunctionsRegistered[getEngineInstanceId()]!;
+            .channelFunctionsRegistered[getEngineInstanceId()];
 
-        if (channelFunctions.containsKey(channelName)) {
-          return channelFunctions[channelName]!.call(jsonDecode(message));
-        } else {
-          print('No channel $channelName registered');
+        if (channelFunctions == null ||
+            !channelFunctions.containsKey(channelName)) {
+          FlutterQjsLogger.warning('No channel $channelName registered');
+          return null;
         }
-        if (JavascriptRuntime.debugEnabled) {
-          print('CHANNEL: $channelName - Message: $message');
+
+        dynamic payload = message;
+        if (message is String) {
+          try {
+            payload = jsonDecode(message);
+          } catch (_) {
+            payload = message;
+          }
         }
-      }
+        return channelFunctions[channelName]!.call(payload);
+      },
     ]);
+    (setToGlobalObject as JSRef).free();
   }
 
   @override
   String jsonStringify(JsEvalResult jsValue) {
-    throw UnimplementedError();
+    return jsonEncode(jsValue.rawResult);
   }
 
   @override

@@ -5,7 +5,7 @@
  * @LastEditors: ekibun
  * @LastEditTime: 2020-09-21 18:28:35
  */
-#include "include/flutter_qjs/flutter_qjs_plugin.h"
+#include "include/flutter_qjs_es2023/flutter_qjs_plugin.h"
 
 #include <flutter_linux/flutter_linux.h>
 #include <gtk/gtk.h>

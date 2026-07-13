@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_qjs/flutter_qjs.dart';
+import 'package:flutter_qjs_es2023/flutter_qjs.dart';
 import 'package:flutter_qjs_example/ajv_example.dart';
 
 void main() {

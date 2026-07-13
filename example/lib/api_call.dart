@@ -1,6 +1,6 @@
 // import 'dart:async';
 
-// import 'package:flutter_qjs/flutter_qjs.dart';
+// import 'package:flutter_qjs_es2023/flutter_qjs.dart';
 
 // // example to show how to an api call can be made and used a Future in dart
 // Future<dynamic> getUser() {

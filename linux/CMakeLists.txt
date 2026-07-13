@@ -3,13 +3,13 @@ cmake_minimum_required(VERSION 3.10)
 include("${CMAKE_CURRENT_SOURCE_DIR}/../cxx/quickjs.cmake")
 target_compile_options(quickjs PRIVATE "-fPIC")
 
-set(PROJECT_NAME "flutter_qjs")
+set(PROJECT_NAME "flutter_qjs_es2023")
 project(${PROJECT_NAME} LANGUAGES CXX)
 
 set(PLUGIN_NAME "${PROJECT_NAME}_plugin")
 
 add_library(${PLUGIN_NAME} SHARED
-  "${PLUGIN_NAME}.cc"
+  "flutter_qjs_plugin.cc"
   "${CXX_LIB_DIR}/ffi.cpp"
 )
 
@@ -25,7 +25,7 @@ target_link_libraries(${PLUGIN_NAME} PRIVATE quickjs)
 target_link_libraries(${PLUGIN_NAME} PRIVATE PkgConfig::GTK)
 
 # List of absolute paths to libraries that should be bundled with the plugin
-set(flutter_qjs_bundled_libraries
+set(flutter_qjs_es2023_bundled_libraries
   ""
   PARENT_SCOPE
 )

@@ -1,18 +1,5 @@
-group 'soko.ekibun.flutter_qjs'
-version '1.0-SNAPSHOT'
-
-buildscript {
-    ext.kotlin_version = '2.1.0'
-    repositories {
-        google()
-        mavenCentral()
-    }
-
-    dependencies {
-        classpath 'com.android.tools.build:gradle:8.9.1'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-    }
-}
+group = 'io.github.nancunchild.flutter_qjs_es2023'
+version = '1.0-SNAPSHOT'
 
 allprojects {
     repositories {
@@ -22,42 +9,31 @@ allprojects {
 }
 
 apply plugin: 'com.android.library'
-apply plugin: 'kotlin-android'
 
 android {
     if (project.android.hasProperty("namespace")) {
-        namespace 'soko.ekibun.flutter_qjs'
+        namespace = 'io.github.nancunchild.flutter_qjs_es2023'
     }
 
-    compileSdk 36
+    compileSdk = 36
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_11
-        targetCompatibility JavaVersion.VERSION_11
-    }
-
-    kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
     }
 
     externalNativeBuild {
         cmake {
-            path "src/main/cxx/CMakeLists.txt"
-            version "3.18.1+"
+            path = file("src/main/cxx/CMakeLists.txt")
+            version = "3.18.1+"
         }
     }
 
-    sourceSets {
-        main.java.srcDirs += 'src/main/kotlin'
-        test.java.srcDirs += 'src/test/kotlin'
-    }
-
     defaultConfig {
-        minSdkVersion 21
+        minSdk = 21
     }
 
     dependencies {
-        testImplementation 'org.jetbrains.kotlin:kotlin-test'
         testImplementation 'org.mockito:mockito-core:5.0.0'
     }
 
