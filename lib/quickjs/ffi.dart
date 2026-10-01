@@ -109,26 +109,51 @@ abstract base class JSPropertyEnum extends Opaque {}
 final DynamicLibrary _qjsLib = _openLib();
 
 DynamicLibrary _openLib() {
-  try {
-    return DynamicLibrary.codeAsset('package:flutter_qjs/flutter_qjs.dart');
-  } catch (_) {}
-  try {
-    return DynamicLibrary.codeAsset('package:flutter_qjs/quickjs/ffi.dart');
-  } catch (_) {}
-  try {
-    return DynamicLibrary.codeAsset('qjs');
-  } catch (_) {}
+  final exeDir = File(Platform.resolvedExecutable).parent.path;
+  final currentDir = Directory.current.path;
+
   if (Platform.isWindows) {
-    for (final name in [
+    final candidates = [
+      '$exeDir\\qjs.dll',
+      '$exeDir\\flutter_qjs.dll',
+      '$exeDir\\flutter_qjs_plugin.dll',
       'qjs.dll',
-      '.dart_tool/lib/qjs.dll',
       'flutter_qjs.dll',
       'flutter_qjs_plugin.dll',
-    ]) {
+      '$currentDir\\build\\native_assets\\windows\\qjs.dll',
+      '$exeDir\\..\\..\\..\\native_assets\\windows\\qjs.dll',
+      '.dart_tool\\lib\\qjs.dll',
+    ];
+    for (final path in candidates) {
       try {
-        return DynamicLibrary.open(name);
+        return DynamicLibrary.open(path);
       } catch (_) {}
     }
+    try {
+      final buildNativeDir =
+          Directory('$currentDir\\build\\native_assets\\windows');
+      if (buildNativeDir.existsSync()) {
+        for (final file in buildNativeDir.listSync(recursive: true)) {
+          if (file is File && file.path.endsWith('qjs.dll')) {
+            try {
+              return DynamicLibrary.open(file.path);
+            } catch (_) {}
+          }
+        }
+      }
+    } catch (_) {}
+    try {
+      final toolDir = Directory('$currentDir\\.dart_tool');
+      if (toolDir.existsSync()) {
+        for (final file in toolDir.listSync(recursive: true)) {
+          if (file is File && file.path.endsWith('qjs.dll')) {
+            try {
+              return DynamicLibrary.open(file.path);
+            } catch (_) {}
+          }
+        }
+      }
+    } catch (_) {}
   } else if (Platform.isAndroid) {
     for (final name in ['libqjs.so', 'libflutter_qjs.so']) {
       try {
@@ -136,28 +161,77 @@ DynamicLibrary _openLib() {
       } catch (_) {}
     }
   } else if (Platform.isLinux) {
-    for (final name in [
+    final candidates = [
+      '$exeDir/lib/libqjs.so',
+      '$exeDir/lib/libflutter_qjs.so',
+      '$exeDir/libqjs.so',
+      '$exeDir/libflutter_qjs.so',
       'libqjs.so',
-      '.dart_tool/lib/libqjs.so',
       'libflutter_qjs.so',
       'libflutter_qjs_plugin.so',
-    ]) {
+      '$currentDir/build/native_assets/linux/libqjs.so',
+      '.dart_tool/lib/libqjs.so',
+    ];
+    for (final path in candidates) {
       try {
-        return DynamicLibrary.open(name);
+        return DynamicLibrary.open(path);
       } catch (_) {}
     }
+    try {
+      final buildNativeDir = Directory('$currentDir/build/native_assets/linux');
+      if (buildNativeDir.existsSync()) {
+        for (final file in buildNativeDir.listSync(recursive: true)) {
+          if (file is File &&
+              (file.path.endsWith('libqjs.so') ||
+                  file.path.endsWith('qjs.so'))) {
+            try {
+              return DynamicLibrary.open(file.path);
+            } catch (_) {}
+          }
+        }
+      }
+    } catch (_) {}
+    try {
+      final toolDir = Directory('$currentDir/.dart_tool');
+      if (toolDir.existsSync()) {
+        for (final file in toolDir.listSync(recursive: true)) {
+          if (file is File &&
+              (file.path.endsWith('libqjs.so') ||
+                  file.path.endsWith('qjs.so'))) {
+            try {
+              return DynamicLibrary.open(file.path);
+            } catch (_) {}
+          }
+        }
+      }
+    } catch (_) {}
   } else if (Platform.isMacOS || Platform.isIOS) {
-    for (final name in [
+    final candidates = [
       'qjs.framework/qjs',
       'libqjs.dylib',
       '.dart_tool/lib/libqjs.dylib',
       'flutter_qjs.framework/flutter_qjs',
       'libflutter_qjs.dylib',
-    ]) {
+      '$exeDir/libqjs.dylib',
+      '$currentDir/build/native_assets/macos/libqjs.dylib',
+    ];
+    for (final path in candidates) {
       try {
-        return DynamicLibrary.open(name);
+        return DynamicLibrary.open(path);
       } catch (_) {}
     }
+    try {
+      final toolDir = Directory('$currentDir/.dart_tool');
+      if (toolDir.existsSync()) {
+        for (final file in toolDir.listSync(recursive: true)) {
+          if (file is File && file.path.endsWith('libqjs.dylib')) {
+            try {
+              return DynamicLibrary.open(file.path);
+            } catch (_) {}
+          }
+        }
+      }
+    } catch (_) {}
   }
   return DynamicLibrary.process();
 }
