@@ -39,6 +39,7 @@
   #define no_inline       __declspec(noinline)
   #define __maybe_unused  
   #define __attribute__(...)
+  #define __attribute(...)
 #else
   /* GCC, Clang, and other compilers */
   #define likely(x)       __builtin_expect(!!(x), 1)
