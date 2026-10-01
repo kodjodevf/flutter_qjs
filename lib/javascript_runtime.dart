@@ -79,10 +79,10 @@ abstract class JavascriptRuntime {
   void dispose();
 
   static Map<String, Map<String, Function(dynamic arg)>>
-      _channelFunctionsRegistered = {};
+  _channelFunctionsRegistered = {};
 
   static Map<String, Map<String, Function(dynamic arg)>>
-      get channelFunctionsRegistered => _channelFunctionsRegistered;
+  get channelFunctionsRegistered => _channelFunctionsRegistered;
 
   JsEvalResult evaluate(String code, {String? sourceUrl});
 
@@ -179,10 +179,12 @@ abstract class JavascriptRuntime {
   }) {
     if (uuid != null) {
       evaluate(
-          "DART_TO_QUICKJS_CHANNEL_sendMessage('$channelName', '${jsonEncode(args)}', '$uuid');");
+        "DART_TO_QUICKJS_CHANNEL_sendMessage('$channelName', '${jsonEncode(args)}', '$uuid');",
+      );
     } else {
       evaluate(
-          "DART_TO_QUICKJS_CHANNEL_sendMessage('$channelName', '${jsonEncode(args)}');");
+        "DART_TO_QUICKJS_CHANNEL_sendMessage('$channelName', '${jsonEncode(args)}');",
+      );
     }
   }
 

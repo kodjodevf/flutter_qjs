@@ -1,15 +1,15 @@
-group 'soko.ekibun.flutter_qjs'
+group 'com.kodjodevf.flutter_qjs'
 version '1.0-SNAPSHOT'
 
 buildscript {
-    ext.kotlin_version = '2.1.0'
+    ext.kotlin_version = '2.2.20'
     repositories {
         google()
         mavenCentral()
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.9.1'
+        classpath 'com.android.tools.build:gradle:8.11.1'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
 }
@@ -26,7 +26,7 @@ apply plugin: 'kotlin-android'
 
 android {
     if (project.android.hasProperty("namespace")) {
-        namespace 'soko.ekibun.flutter_qjs'
+        namespace 'com.kodjodevf.flutter_qjs'
     }
 
     compileSdk 36
@@ -40,36 +40,11 @@ android {
         jvmTarget = JavaVersion.VERSION_11.toString()
     }
 
-    externalNativeBuild {
-        cmake {
-            path "src/main/cxx/CMakeLists.txt"
-            version "3.18.1+"
-        }
-    }
-
-    sourceSets {
-        main.java.srcDirs += 'src/main/kotlin'
-        test.java.srcDirs += 'src/test/kotlin'
-    }
-
     defaultConfig {
         minSdkVersion 21
     }
 
-    dependencies {
-        testImplementation 'org.jetbrains.kotlin:kotlin-test'
-        testImplementation 'org.mockito:mockito-core:5.0.0'
-    }
-
-    testOptions {
-        unitTests.all {
-            useJUnitPlatform()
-
-            testLogging {
-               events "passed", "skipped", "failed", "standardOut", "standardError"
-               outputs.upToDateWhen {false}
-               showStandardStreams = true
-            }
-        }
+    sourceSets {
+        main.java.srcDirs += 'src/main/kotlin'
     }
 }

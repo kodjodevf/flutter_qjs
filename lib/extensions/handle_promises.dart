@@ -77,8 +77,9 @@ extension HandlePromises on JavascriptRuntime {
   }
 
   bool isPendingPromise(int idx) {
-    String resultIsPending =
-        evaluate("FLUTTER_NATIVEJS_IS_PENDING_PROMISE($idx)").stringResult;
+    String resultIsPending = evaluate(
+      "FLUTTER_NATIVEJS_IS_PENDING_PROMISE($idx)",
+    ).stringResult;
 
     return "true" == resultIsPending;
   }
@@ -88,8 +89,10 @@ extension HandlePromises on JavascriptRuntime {
         evaluate("FLUTTER_NATIVEJS_IS_FULLFILLED_PROMISE($idx)").stringResult;
   }
 
-  Future<JsEvalResult> handlePromise(JsEvalResult value,
-      {Duration? timeout}) async {
+  Future<JsEvalResult> handlePromise(
+    JsEvalResult value, {
+    Duration? timeout,
+  }) async {
     final completer = Completer<JsEvalResult>();
 
     if (timeout != null) {
@@ -100,7 +103,9 @@ extension HandlePromises on JavascriptRuntime {
   }
 
   Future<JsEvalResult> _doHandlePromise(
-      JsEvalResult value, Completer completer) async {
+    JsEvalResult value,
+    Completer completer,
+  ) async {
     if (value.stringResult.contains('Instance of \'Future')) {
       var completed = false;
       Function? fnEvaluatePromise;
@@ -108,7 +113,9 @@ extension HandlePromises on JavascriptRuntime {
         this.executePendingJob();
         if (!completed) {
           await Future.delayed(
-              Duration(milliseconds: 20), () => fnEvaluatePromise!.call());
+            Duration(milliseconds: 20),
+            () => fnEvaluatePromise!.call(),
+          );
         } else {
           if (JavascriptRuntime.debugEnabled) {
             print('Promise completed');
@@ -116,7 +123,9 @@ extension HandlePromises on JavascriptRuntime {
         }
       };
       Future.delayed(
-          Duration(milliseconds: 20), () => fnEvaluatePromise!.call());
+        Duration(milliseconds: 20),
+        () => fnEvaluatePromise!.call(),
+      );
 
       // Future.delayed(Duration(seconds: 1), () {
       //   this.executePendingJob();
@@ -134,8 +143,10 @@ extension HandlePromises on JavascriptRuntime {
     final evalRegisterPromise = fnRegisterPromiseFunction.rawResult;
     // print(fnRegisterPromiseFunction);
     // todo: investigate - application is crashing around this point
-    final promiseQuerableIdx =
-        callFunction(evalRegisterPromise, value.rawResult).stringResult;
+    final promiseQuerableIdx = callFunction(
+      evalRegisterPromise,
+      value.rawResult,
+    ).stringResult;
     int idxPromise = int.parse(promiseQuerableIdx);
     Timer.periodic(Duration(milliseconds: 20), (timer) {
       // call to _JS_ExecutePendingJob

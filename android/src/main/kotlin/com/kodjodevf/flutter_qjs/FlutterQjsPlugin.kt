@@ -1,4 +1,4 @@
-package soko.ekibun.flutter_qjs
+package com.kodjodevf.flutter_qjs
 
 import androidx.annotation.NonNull
 

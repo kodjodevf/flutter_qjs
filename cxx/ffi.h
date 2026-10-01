@@ -1,3 +1,6 @@
+#ifndef FFI_H
+#define FFI_H
+
 #include "quickjs/quickjs.h"
 
 #ifdef _MSC_VER
@@ -6,139 +9,145 @@
 #define DLLEXPORT __attribute__((visibility("default"))) __attribute__((used))
 #endif
 
-extern "C"
-{
-  enum JSChannelType {
-    JSChannelType_METHON = 0,
-    JSChannelType_MODULE = 1,
-    JSChannelType_PROMISE_TRACK = 2,
-    JSChannelType_FREE_OBJECT = 3,
-  };
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-  typedef void *JSChannel(JSContext *ctx, size_t type, void *argv);
+enum JSChannelType {
+  JSChannelType_METHON = 0,
+  JSChannelType_MODULE = 1,
+  JSChannelType_PROMISE_TRACK = 2,
+  JSChannelType_FREE_OBJECT = 3,
+};
 
-  DLLEXPORT JSValue *jsThrow(JSContext *ctx, JSValue *obj);
+typedef void *JSChannel(JSContext *ctx, size_t type, void *argv);
 
-  DLLEXPORT JSValue *jsEXCEPTION();
+DLLEXPORT JSValue *jsThrow(JSContext *ctx, JSValue *obj);
 
-  DLLEXPORT JSValue *jsUNDEFINED();
+DLLEXPORT JSValue *jsEXCEPTION(void);
 
-  DLLEXPORT JSValue *jsNULL();
+DLLEXPORT JSValue *jsUNDEFINED(void);
 
-  DLLEXPORT JSRuntime *jsNewRuntime(JSChannel channel, int64_t timeout);
+DLLEXPORT JSValue *jsNULL(void);
 
-  DLLEXPORT uint32_t jsNewClass(JSContext *ctx, const char *name);
+DLLEXPORT JSRuntime *jsNewRuntime(JSChannel channel, int64_t timeout);
 
-  DLLEXPORT void *jsGetObjectOpaque(JSValue *obj, uint32_t classid);
+DLLEXPORT uint32_t jsNewClass(JSContext *ctx, const char *name);
 
-  DLLEXPORT JSValue *jsNewObjectClass(JSContext *ctx, uint32_t QJSClassId, void *opaque);
+DLLEXPORT void *jsGetObjectOpaque(JSValue *obj, uint32_t classid);
 
-  DLLEXPORT void jsSetMaxStackSize(JSRuntime *rt, size_t stack_size);
+DLLEXPORT JSValue *jsNewObjectClass(JSContext *ctx, uint32_t QJSClassId, void *opaque);
 
-  DLLEXPORT void jsSetMemoryLimit(JSRuntime *rt, size_t limit);
+DLLEXPORT void jsSetMaxStackSize(JSRuntime *rt, size_t stack_size);
 
-  DLLEXPORT void jsFreeRuntime(JSRuntime *rt);
+DLLEXPORT void jsSetMemoryLimit(JSRuntime *rt, size_t limit);
 
-  DLLEXPORT JSValue *jsNewCFunction(JSContext *ctx, JSValue *funcData);
+DLLEXPORT void jsFreeRuntime(JSRuntime *rt);
 
-  DLLEXPORT JSValue *jsGetGlobalObject(JSContext *ctx);
+DLLEXPORT JSValue *jsNewCFunction(JSContext *ctx, JSValue *funcData);
 
-  DLLEXPORT JSContext *jsNewContext(JSRuntime *rt);
+DLLEXPORT JSValue *jsGetGlobalObject(JSContext *ctx);
 
-  DLLEXPORT void jsFreeContext(JSContext *ctx);
+DLLEXPORT JSContext *jsNewContext(JSRuntime *rt);
 
-  DLLEXPORT JSRuntime *jsGetRuntime(JSContext *ctx);
+DLLEXPORT void jsFreeContext(JSContext *ctx);
 
-  DLLEXPORT JSValue *jsEval(JSContext *ctx, const char *input, size_t input_len, const char *filename, int32_t eval_flags);
+DLLEXPORT JSRuntime *jsGetRuntime(JSContext *ctx);
 
-  DLLEXPORT int32_t jsValueGetTag(JSValue *val);
+DLLEXPORT JSValue *jsEval(JSContext *ctx, const char *input, size_t input_len, const char *filename, int32_t eval_flags);
 
-  DLLEXPORT void *jsValueGetPtr(JSValue *val);
+DLLEXPORT int32_t jsValueGetTag(JSValue *val);
 
-  DLLEXPORT int32_t jsTagIsFloat64(int32_t tag);
+DLLEXPORT void *jsValueGetPtr(JSValue *val);
 
-  DLLEXPORT JSValue *jsNewBool(JSContext *ctx, int32_t val);
+DLLEXPORT int32_t jsTagIsFloat64(int32_t tag);
 
-  DLLEXPORT JSValue *jsNewInt64(JSContext *ctx, int64_t val);
+DLLEXPORT JSValue *jsNewBool(JSContext *ctx, int32_t val);
 
-  DLLEXPORT JSValue *jsNewFloat64(JSContext *ctx, double val);
+DLLEXPORT JSValue *jsNewInt64(JSContext *ctx, int64_t val);
 
-  DLLEXPORT JSValue *jsNewString(JSContext *ctx, const char *str);
+DLLEXPORT JSValue *jsNewFloat64(JSContext *ctx, double val);
 
-  DLLEXPORT JSValue *jsNewArrayBufferCopy(JSContext *ctx, const uint8_t *buf, size_t len);
+DLLEXPORT JSValue *jsNewString(JSContext *ctx, const char *str);
 
-  DLLEXPORT JSValue *jsNewArray(JSContext *ctx);
+DLLEXPORT JSValue *jsNewArrayBufferCopy(JSContext *ctx, const uint8_t *buf, size_t len);
 
-  DLLEXPORT JSValue *jsNewObject(JSContext *ctx);
+DLLEXPORT JSValue *jsNewArray(JSContext *ctx);
 
-  DLLEXPORT void jsFreeValue(JSContext *ctx, JSValue *v, int32_t free);
+DLLEXPORT JSValue *jsNewObject(JSContext *ctx);
 
-  DLLEXPORT void jsFreeValueRT(JSRuntime *rt, JSValue *v, int32_t free);
+DLLEXPORT void jsFreeValue(JSContext *ctx, JSValue *v, int32_t free_mem);
 
-  DLLEXPORT JSValue *jsDupValue(JSContext *ctx, JSValueConst *v);
+DLLEXPORT void jsFreeValueRT(JSRuntime *rt, JSValue *v, int32_t free_mem);
 
-  DLLEXPORT JSValue *jsDupValueRT(JSRuntime *rt, JSValue *v);
+DLLEXPORT JSValue *jsDupValue(JSContext *ctx, JSValueConst *v);
 
-  DLLEXPORT int32_t jsToBool(JSContext *ctx, JSValueConst *val);
+DLLEXPORT JSValue *jsDupValueRT(JSRuntime *rt, JSValue *v);
 
-  DLLEXPORT int64_t jsToInt64(JSContext *ctx, JSValueConst *val);
+DLLEXPORT int32_t jsToBool(JSContext *ctx, JSValueConst *val);
 
-  DLLEXPORT double jsToFloat64(JSContext *ctx, JSValueConst *val);
+DLLEXPORT int64_t jsToInt64(JSContext *ctx, JSValueConst *val);
 
-  DLLEXPORT const char *jsToCString(JSContext *ctx, JSValueConst *val);
+DLLEXPORT double jsToFloat64(JSContext *ctx, JSValueConst *val);
 
-  DLLEXPORT void jsFreeCString(JSContext *ctx, const char *ptr);
+DLLEXPORT const char *jsToCString(JSContext *ctx, JSValueConst *val);
 
-  DLLEXPORT uint8_t *jsGetArrayBuffer(JSContext *ctx, size_t *psize, JSValueConst *obj);
+DLLEXPORT void jsFreeCString(JSContext *ctx, const char *ptr);
 
-  DLLEXPORT int32_t jsIsFunction(JSContext *ctx, JSValueConst *val);
+DLLEXPORT uint8_t *jsGetArrayBuffer(JSContext *ctx, size_t *psize, JSValueConst *obj);
 
-  DLLEXPORT int32_t jsIsPromise(JSContext *ctx, JSValueConst *val);
+DLLEXPORT int32_t jsIsFunction(JSContext *ctx, JSValueConst *val);
 
-  DLLEXPORT int32_t jsIsArray(JSContext *ctx, JSValueConst *val);
+DLLEXPORT int32_t jsIsPromise(JSContext *ctx, JSValueConst *val);
 
-  DLLEXPORT int32_t jsIsMap(JSContext *ctx, JSValueConst *val);
+DLLEXPORT int32_t jsIsArray(JSContext *ctx, JSValueConst *val);
 
-  DLLEXPORT int32_t jsIsError(JSContext *ctx, JSValueConst *val);
+DLLEXPORT int32_t jsIsMap(JSContext *ctx, JSValueConst *val);
 
-  DLLEXPORT JSValue *jsNewError(JSContext *ctx);
+DLLEXPORT int32_t jsIsError(JSContext *ctx, JSValueConst *val);
 
-  DLLEXPORT JSValue *jsGetProperty(JSContext *ctx, JSValueConst *this_obj,
-                                   JSAtom prop);
+DLLEXPORT JSValue *jsNewError(JSContext *ctx);
 
-  DLLEXPORT int32_t jsDefinePropertyValue(JSContext *ctx, JSValueConst *this_obj,
-                                          JSAtom prop, JSValue *val, int32_t flags);
+DLLEXPORT JSValue *jsGetProperty(JSContext *ctx, JSValueConst *this_obj,
+                                 JSAtom prop);
 
-  DLLEXPORT void jsFreeAtom(JSContext *ctx, JSAtom v);
+DLLEXPORT int32_t jsDefinePropertyValue(JSContext *ctx, JSValueConst *this_obj,
+                                        JSAtom prop, JSValue *val, int32_t flags);
 
-  DLLEXPORT JSAtom jsValueToAtom(JSContext *ctx, JSValueConst *val);
+DLLEXPORT void jsFreeAtom(JSContext *ctx, JSAtom v);
 
-  DLLEXPORT JSValue *jsAtomToValue(JSContext *ctx, JSAtom val);
+DLLEXPORT JSAtom jsValueToAtom(JSContext *ctx, JSValueConst *val);
 
-  DLLEXPORT int32_t jsGetOwnPropertyNames(JSContext *ctx, JSPropertyEnum **ptab,
-                                          uint32_t *plen, JSValueConst *obj, int32_t flags);
+DLLEXPORT JSValue *jsAtomToValue(JSContext *ctx, JSAtom val);
 
-  DLLEXPORT JSAtom jsPropertyEnumGetAtom(JSPropertyEnum *ptab, int32_t i);
+DLLEXPORT int32_t jsGetOwnPropertyNames(JSContext *ctx, JSPropertyEnum **ptab,
+                                        uint32_t *plen, JSValueConst *obj, int32_t flags);
 
-  DLLEXPORT uint32_t sizeOfJSValue();
+DLLEXPORT JSAtom jsPropertyEnumGetAtom(JSPropertyEnum *ptab, int32_t i);
 
-  DLLEXPORT void setJSValueList(JSValue *list, uint32_t i, JSValue *val);
+DLLEXPORT uint32_t sizeOfJSValue(void);
 
-  DLLEXPORT JSValue *jsCall(JSContext *ctx, JSValueConst *func_obj, JSValueConst *this_obj,
-                            int32_t argc, JSValueConst *argv);
+DLLEXPORT void setJSValueList(JSValue *list, uint32_t i, JSValue *val);
 
-  DLLEXPORT int32_t jsIsException(JSValueConst *val);
+DLLEXPORT JSValue *jsCall(JSContext *ctx, JSValueConst *func_obj, JSValueConst *this_obj,
+                          int32_t argc, JSValueConst *argv);
 
-  DLLEXPORT JSValue *jsGetException(JSContext *ctx);
+DLLEXPORT int32_t jsIsException(JSValueConst *val);
 
-  DLLEXPORT int32_t jsExecutePendingJob(JSRuntime *rt);
+DLLEXPORT JSValue *jsGetException(JSContext *ctx);
 
-  DLLEXPORT JSValue *jsNewPromiseCapability(JSContext *ctx, JSValue *resolving_funcs);
+DLLEXPORT int32_t jsExecutePendingJob(JSRuntime *rt);
 
-  DLLEXPORT void jsFree(JSContext *ctx, void *ptab);
+DLLEXPORT JSValue *jsNewPromiseCapability(JSContext *ctx, JSValue *resolving_funcs);
 
-  DLLEXPORT uint8_t *CompileScript(JSContext *ctx, const char *script, const char *fileName, size_t *lengthPtr);
+DLLEXPORT void jsFree(JSContext *ctx, void *ptab);
 
-  DLLEXPORT JSValue *EvaluateBytecode(JSContext *ctx, size_t length, uint8_t *buf);
+DLLEXPORT uint8_t *CompileScript(JSContext *ctx, const char *script, const char *fileName, size_t *lengthPtr);
 
+DLLEXPORT JSValue *EvaluateBytecode(JSContext *ctx, size_t length, uint8_t *buf);
+
+#ifdef __cplusplus
 }
+#endif
+
+#endif // FFI_H

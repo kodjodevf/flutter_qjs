@@ -95,6 +95,7 @@ enum {
     /* any larger tag is FLOAT64 if JS_NAN_BOXING */
 };
 
+/* must match the layout of 'JSMallocBlockHeader' */
 typedef struct JSRefCountHeader {
     int ref_count;
 } JSRefCountHeader;
@@ -215,7 +216,7 @@ static inline JSValue __JS_NewShortBigInt(JSContext *ctx, int32_t d)
 #else /* !JS_NAN_BOXING */
 
 typedef union JSValueUnion {
-    int32_t int32;
+    uint64_t uint64;
     double float64;
     void *ptr;
 #if JS_SHORT_BIG_INT_BITS == 32
@@ -235,13 +236,15 @@ typedef struct JSValue {
 #define JS_VALUE_GET_TAG(v) ((int32_t)(v).tag)
 /* same as JS_VALUE_GET_TAG, but return JS_TAG_FLOAT64 with NaN boxing */
 #define JS_VALUE_GET_NORM_TAG(v) JS_VALUE_GET_TAG(v)
-#define JS_VALUE_GET_INT(v) ((v).u.int32)
-#define JS_VALUE_GET_BOOL(v) ((v).u.int32)
+#define JS_VALUE_GET_INT(v) ((int)(v).u.uint64)
+#define JS_VALUE_GET_BOOL(v) ((int)(v).u.uint64)
 #define JS_VALUE_GET_FLOAT64(v) ((v).u.float64)
 #define JS_VALUE_GET_SHORT_BIG_INT(v) ((v).u.short_big_int)
 #define JS_VALUE_GET_PTR(v) ((v).u.ptr)
 
-#define JS_MKVAL(tag, val) (JSValue){ (JSValueUnion){ .int32 = val }, tag }
+/* avoid uninitialized data by using a 64 bit field even if only 32
+   bits are needed because some compilers generate slower code */
+#define JS_MKVAL(tag, val) (JSValue){ (JSValueUnion){ .uint64 = (uint32_t)(val) }, tag }
 #define JS_MKPTR(tag, p) (JSValue){ (JSValueUnion){ .ptr = p }, tag }
 
 #define JS_TAG_IS_FLOAT64(tag) ((unsigned)(tag) == JS_TAG_FLOAT64)
@@ -675,10 +678,16 @@ JSValue __js_printf_like(2, 3) JS_ThrowInternalError(JSContext *ctx, const char 
 JSValue JS_ThrowOutOfMemory(JSContext *ctx);
 
 void __JS_FreeValue(JSContext *ctx, JSValue v);
+
+static inline JSRefCountHeader *__js_rc(void *ptr)
+{
+    return (JSRefCountHeader *)((uint32_t *)ptr - 1);
+}
+
 static inline void JS_FreeValue(JSContext *ctx, JSValue v)
 {
     if (JS_VALUE_HAS_REF_COUNT(v)) {
-        JSRefCountHeader *p = (JSRefCountHeader *)JS_VALUE_GET_PTR(v);
+        JSRefCountHeader *p = __js_rc(JS_VALUE_GET_PTR(v));
         if (--p->ref_count <= 0) {
             __JS_FreeValue(ctx, v);
         }
@@ -688,7 +697,7 @@ void __JS_FreeValueRT(JSRuntime *rt, JSValue v);
 static inline void JS_FreeValueRT(JSRuntime *rt, JSValue v)
 {
     if (JS_VALUE_HAS_REF_COUNT(v)) {
-        JSRefCountHeader *p = (JSRefCountHeader *)JS_VALUE_GET_PTR(v);
+        JSRefCountHeader *p = __js_rc(JS_VALUE_GET_PTR(v));
         if (--p->ref_count <= 0) {
             __JS_FreeValueRT(rt, v);
         }
@@ -698,7 +707,7 @@ static inline void JS_FreeValueRT(JSRuntime *rt, JSValue v)
 static inline JSValue JS_DupValue(JSContext *ctx, JSValueConst v)
 {
     if (JS_VALUE_HAS_REF_COUNT(v)) {
-        JSRefCountHeader *p = (JSRefCountHeader *)JS_VALUE_GET_PTR(v);
+        JSRefCountHeader *p = __js_rc(JS_VALUE_GET_PTR(v));
         p->ref_count++;
     }
     return (JSValue)v;
@@ -707,7 +716,7 @@ static inline JSValue JS_DupValue(JSContext *ctx, JSValueConst v)
 static inline JSValue JS_DupValueRT(JSRuntime *rt, JSValueConst v)
 {
     if (JS_VALUE_HAS_REF_COUNT(v)) {
-        JSRefCountHeader *p = (JSRefCountHeader *)JS_VALUE_GET_PTR(v);
+        JSRefCountHeader *p = __js_rc(JS_VALUE_GET_PTR(v));
         p->ref_count++;
     }
     return (JSValue)v;
@@ -730,6 +739,9 @@ int JS_ToFloat64(JSContext *ctx, double *pres, JSValueConst val);
 int JS_ToBigInt64(JSContext *ctx, int64_t *pres, JSValueConst val);
 /* same as JS_ToInt64() but allow BigInt */
 int JS_ToInt64Ext(JSContext *ctx, int64_t *pres, JSValueConst val);
+JSValue JS_NewBigInt128(JSContext *ctx, uint64_t low, uint64_t high);
+int JS_ToBigInt128(JSContext *ctx, uint64_t *plow, uint64_t *phigh, JSValueConst val);
+int JS_ToBigInt128Sat(JSContext *ctx, uint64_t *plow, uint64_t *phigh, JSValueConst val);
 
 JSValue JS_NewStringLen(JSContext *ctx, const char *str1, size_t len1);
 static inline JSValue JS_NewString(JSContext *ctx, const char *str)
@@ -749,6 +761,8 @@ static inline const char *JS_ToCString(JSContext *ctx, JSValueConst val1)
     return JS_ToCStringLen2(ctx, NULL, val1, 0);
 }
 void JS_FreeCString(JSContext *ctx, const char *ptr);
+
+JSValue JS_NewSymbol(JSContext *ctx, const char *description, JS_BOOL is_global);
 
 JSValue JS_NewObjectProtoClass(JSContext *ctx, JSValueConst proto, JSClassID class_id);
 JSValue JS_NewObjectClass(JSContext *ctx, int class_id);
@@ -1160,8 +1174,10 @@ void JS_PrintValueRT(JSRuntime *rt, JSPrintValueWrite *write_func, void *write_o
                      JSValueConst val, const JSPrintValueOptions *options);
 void JS_PrintValue(JSContext *ctx, JSPrintValueWrite *write_func, void *write_opaque,
                    JSValueConst val, const JSPrintValueOptions *options);
+
 JS_BOOL JS_IsPromise(JSContext* ctx, JSValueConst val);
 int JS_IsMap(JSContext *ctx, JSValueConst val);
+
 #undef js_unlikely
 #undef js_force_inline
 

@@ -9,17 +9,14 @@ Pod::Spec.new do |s|
   s.description      = <<-DESC
 This plugin is a simple js engine for flutter using the `quickjs` project. Plugin currently supports all the platforms except web!
                        DESC
-  s.homepage         = 'https://github.com/ekibun/flutter_qjs'
+  s.homepage         = 'https://github.com/kodjodevf/flutter_qjs'
   s.license          = { :file => '../LICENSE' }
-  s.author           = { 'ekibun' => 'soekibun@gmail.com' }
+  s.author           = { 'kodjodevf' => 'kodjomoustapha@gmail.com' }
   s.source           = { :path => '.' }
-  s.compiler_flags = '-DDUMP_LEAKS'
-  s.source_files = ['Classes/**/*', 'cxx/*.{c,cpp}']
+  s.source_files = 'Classes/**/*'
   s.dependency 'FlutterMacOS'
 
-  s.platform = :osx, '10.11'
+  s.platform = :osx, '10.14'
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES' }
-  s.vendored_libraries = 'build/Debug/libffiquickjs.dylib'
-  s.prepare_command = 'sh ../cxx/prebuild.sh'
   s.swift_version = '5.0'
 end

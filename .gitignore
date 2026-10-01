@@ -1,14 +1,9 @@
 .DS_Store
 .dart_tool/
-
 .packages
 .pub/
-
 build/
 .idea/
-.vscode/settings.json
-
-ios/cxx
-macos/cxx
-
-.vscode
+.vscode/
+*.iml
+.cxx/
