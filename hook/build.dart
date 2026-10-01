@@ -30,7 +30,14 @@ void main(List<String> args) async {
       includes: ['cxx'],
       libraries: [if (isAndroid || isLinux) 'm'],
       flags: [
-        if (isWindows) ...['/Oi-', '/utf-8', '/wd4018', '/wd4244'],
+        if (isWindows) ...[
+          '/Oi-',
+          '/utf-8',
+          '/wd4018',
+          '/wd4244',
+          '/wd4267',
+          '/wd4996',
+        ],
         if (isAndroid) ...[
           '-Wl,-z,max-page-size=16384',
           '-Wl,--hash-style=both',
