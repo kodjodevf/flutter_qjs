@@ -109,6 +109,15 @@ abstract base class JSPropertyEnum extends Opaque {}
 final DynamicLibrary _qjsLib = _openLib();
 
 DynamicLibrary _openLib() {
+  try {
+    return DynamicLibrary.codeAsset('package:flutter_qjs/flutter_qjs.dart');
+  } catch (_) {}
+  try {
+    return DynamicLibrary.codeAsset('package:flutter_qjs/quickjs/ffi.dart');
+  } catch (_) {}
+  try {
+    return DynamicLibrary.codeAsset('qjs');
+  } catch (_) {}
   if (Platform.isWindows) {
     for (final name in [
       'qjs.dll',
