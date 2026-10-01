@@ -28,16 +28,9 @@ void main(List<String> args) async {
       assetName: 'package:flutter_qjs/flutter_qjs.dart',
       sources: sources,
       includes: ['cxx'],
-      libraries: [
-        if (isAndroid || isLinux) 'm',
-      ],
+      libraries: [if (isAndroid || isLinux) 'm'],
       flags: [
-        if (isWindows) ...[
-          '/Oi-',
-          '/utf-8',
-          '/wd4018',
-          '/wd4244',
-        ],
+        if (isWindows) ...['/Oi-', '/utf-8', '/wd4018', '/wd4244'],
         if (isAndroid) ...[
           '-Wl,-z,max-page-size=16384',
           '-Wl,--hash-style=both',

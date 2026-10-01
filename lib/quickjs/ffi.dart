@@ -112,6 +112,7 @@ DynamicLibrary _openLib() {
   if (Platform.isWindows) {
     for (final name in [
       'qjs.dll',
+      '.dart_tool/lib/qjs.dll',
       'flutter_qjs.dll',
       'flutter_qjs_plugin.dll',
     ]) {
@@ -128,6 +129,7 @@ DynamicLibrary _openLib() {
   } else if (Platform.isLinux) {
     for (final name in [
       'libqjs.so',
+      '.dart_tool/lib/libqjs.so',
       'libflutter_qjs.so',
       'libflutter_qjs_plugin.so',
     ]) {
@@ -139,6 +141,7 @@ DynamicLibrary _openLib() {
     for (final name in [
       'qjs.framework/qjs',
       'libqjs.dylib',
+      '.dart_tool/lib/libqjs.dylib',
       'flutter_qjs.framework/flutter_qjs',
       'libflutter_qjs.dylib',
     ]) {
