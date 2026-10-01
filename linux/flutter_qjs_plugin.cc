@@ -1,10 +1,3 @@
-/*
- * @Description: 
- * @Author: ekibun
- * @Date: 2020-08-17 21:37:11
- * @LastEditors: ekibun
- * @LastEditTime: 2020-09-21 18:28:35
- */
 #include "include/flutter_qjs/flutter_qjs_plugin.h"
 
 #include <flutter_linux/flutter_linux.h>

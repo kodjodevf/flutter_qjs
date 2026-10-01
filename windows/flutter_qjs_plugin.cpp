@@ -1,10 +1,4 @@
-/*
- * @Description: empty plugin
- * @Author: ekibun
- * @Date: 2020-08-25 21:09:20
- * @LastEditors: ekibun
- * @LastEditTime: 2020-09-20 16:00:15
- */
+
 #include "include/flutter_qjs/flutter_qjs_plugin.h"
 
 // This must be included before many other Windows headers.
