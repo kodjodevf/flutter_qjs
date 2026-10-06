@@ -643,7 +643,7 @@ typedef enum {
 } JSClosureTypeEnum;
 
 typedef struct JSClosureVar {
-    JSClosureTypeEnum closure_type : 3;
+    uint8_t closure_type : 3; /* see JSClosureTypeEnum; not an enum bitfield since MSVC makes those signed */
     uint8_t is_lexical : 1; /* lexical variable */
     uint8_t is_const : 1; /* const variable (is_lexical = 1 if is_const = 1 */
     uint8_t var_kind : 4; /* see JSVarKindEnum */
