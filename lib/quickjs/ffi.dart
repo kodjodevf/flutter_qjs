@@ -130,8 +130,9 @@ DynamicLibrary _openLib() {
       } catch (_) {}
     }
     try {
-      final buildNativeDir =
-          Directory('$currentDir\\build\\native_assets\\windows');
+      final buildNativeDir = Directory(
+        '$currentDir\\build\\native_assets\\windows',
+      );
       if (buildNativeDir.existsSync()) {
         for (final file in buildNativeDir.listSync(recursive: true)) {
           if (file is File && file.path.endsWith('qjs.dll')) {
