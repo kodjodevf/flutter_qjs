@@ -28,6 +28,10 @@ target_compile_definitions(${PLUGIN_NAME} PRIVATE
   CONFIG_VERSION="2026-06-04"
   DUMP_LEAKS=1
 )
+target_compile_options(${PLUGIN_NAME} PRIVATE
+  -Wno-error
+  -w
+)
 target_include_directories(${PLUGIN_NAME} PRIVATE
   "${CXX_DIR}"
   "${QUICKJS_DIR}"
